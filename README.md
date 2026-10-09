@@ -93,6 +93,82 @@ aws sts get-caller-identity
 }
 ```
 
+## Amazon S3 Vectors: サンプルベクトルの保存と検索
+
+以下の手順でベクトルバケットとインデックスを作成し、サンプルベクトルを保存してから通常検索と条件付き検索を試せます。コマンドは AWS CLI のリージョン設定を使用します。`my-vector-bucket-123456` は例なので、利用可能な名前に置き換えてください。
+
+### 1. ベクトルバケットとインデックスを作成
+
+```bash
+aws s3vectors create-vector-bucket \
+  --vector-bucket-name my-vector-bucket-123456
+
+aws s3vectors create-index \
+  --vector-bucket-name my-vector-bucket-123456 \
+  --index-name sample-index \
+  --data-type float32 \
+  --dimension 10 \
+  --distance-metric cosine
+```
+
+### 2. サンプルベクトルを保存
+
+以下は検索手順を試すための人工的な10次元ベクトルです。実際の文章の意味に基づく検索には、利用する埋め込みモデルで生成したベクトルを保存してください。
+
+```bash
+aws s3vectors put-vectors \
+  --vector-bucket-name my-vector-bucket-123456 \
+  --index-name sample-index \
+  --vectors '[
+    {
+      "key": "manual-001",
+      "data": {"float32": [0.9, 0.1, 0, 0, 0, 0, 0, 0, 0, 0]},
+      "metadata": {"category": "manual", "active": true}
+    },
+    {
+      "key": "manual-002",
+      "data": {"float32": [0.8, 0.2, 0, 0, 0, 0, 0, 0, 0, 0]},
+      "metadata": {"category": "manual", "active": true}
+    },
+    {
+      "key": "faq-001",
+      "data": {"float32": [0.1, 0.9, 0, 0, 0, 0, 0, 0, 0, 0]},
+      "metadata": {"category": "faq", "active": true}
+    }
+  ]'
+```
+
+### 3. 通常検索
+
+フィルターを指定せずに、インデックス内の全ベクトルから近いものを検索します。
+
+```bash
+aws s3vectors query-vectors \
+  --vector-bucket-name my-vector-bucket-123456 \
+  --index-name sample-index \
+  --top-k 3 \
+  --query-vector '{"float32":[0.9,0.1,0,0,0,0,0,0,0,0]}' \
+  --return-metadata \
+  --return-distance
+```
+
+### 4. メタデータ条件付き検索
+
+`--filter` に保存したメタデータの条件を指定します。次の例では `category` が `manual` で `active` が `true` のベクトルだけを検索します。
+
+```bash
+aws s3vectors query-vectors \
+  --vector-bucket-name my-vector-bucket-123456 \
+  --index-name sample-index \
+  --top-k 3 \
+  --query-vector '{"float32":[0.9,0.1,0,0,0,0,0,0,0,0]}' \
+  --filter '{"category":"manual","active":true}' \
+  --return-metadata \
+  --return-distance
+```
+
+検索ベクトルの次元数はインデックスの `--dimension` と一致させてください。メタデータフィルターを使うには `s3vectors:QueryVectors` と `s3vectors:GetVectors` の権限が必要です。メタデータの事前フィルタリングの詳細や、既存インデックスでの利用条件については [AWS の記事](https://aws.amazon.com/jp/blogs/aws/amazon-s3-vectors-now-supports-metadata-pre-filtering-for-higher-recall-on-filtered-searches/) を参照してください。
+
 ## トラブルシューティング
 
 ### よくある問題と解決方法
