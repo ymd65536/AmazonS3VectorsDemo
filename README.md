@@ -93,6 +93,24 @@ aws sts get-caller-identity
 }
 ```
 
+## Amazon S3 Vectors の条件付きベクトル検索
+
+`query-vectors` の `--filter` にベクトル登録時のメタデータ条件を指定すると、条件に合うベクトルに絞って類似検索できます。以下は `category` が `manual` で、`active` が `true` のベクトルを検索する例です。
+
+```bash
+aws s3vectors query-vectors \
+  --index-arn arn:aws:s3vectors:ap-northeast-1:123456789012:bucket/my-vector-bucket/index/my-index \
+  --top-k 5 \
+  --query-vector '{"float32":[0.1,0.2,0.3,0.4]}' \
+  --filter '{"category":"manual","active":true}' \
+  --return-metadata \
+  --return-distance
+```
+
+インデックス ARN とクエリベクトルは自身の環境に合わせて指定してください。クエリベクトルの次元数はインデックスの次元数と一致させ、フィルターに使うキーと値は登録済みメタデータに合わせます。メタデータフィルターを使うには `s3vectors:QueryVectors` と `s3vectors:GetVectors` の権限が必要です。
+
+メタデータの事前フィルタリングの詳細や、既存インデックスでの利用条件については [AWS の記事](https://aws.amazon.com/jp/blogs/aws/amazon-s3-vectors-now-supports-metadata-pre-filtering-for-higher-recall-on-filtered-searches/) を参照してください。
+
 ## トラブルシューティング
 
 ### よくある問題と解決方法
